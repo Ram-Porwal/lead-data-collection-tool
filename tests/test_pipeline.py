@@ -5,6 +5,8 @@ from lead_collector.extraction.exceptions import WebsiteFetchError
 from lead_collector.extraction.website import FetchResult
 from lead_collector.models import ValidationStatus
 from lead_collector.pipeline import LeadCollectionPipeline
+from lead_collector.storage.database import LeadDatabase
+from lead_collector.storage.repository import LeadRepository
 
 
 def make_result(
@@ -162,3 +164,139 @@ def test_pipeline_handles_empty_discovery_results():
     assert result.leads == []
 
     fetcher.fetch.assert_not_called()
+
+
+def test_pipeline_persists_leads_to_database(tmp_path):
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.return_value = FetchResult(
+        url="https://example.com",
+        status_code=200,
+        content="""
+            <html>
+                <head>
+                    <title>Example Company</title>
+                </head>
+                <body>
+                    Contact sales@example.com
+                </body>
+            </html>
+        """,
+    )
+
+    database = LeadDatabase(tmp_path / "leads.db")
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        database=database,
+    )
+
+    result = pipeline.run("software companies")
+
+    assert len(result.leads) == 1
+    assert database.count() == 1
+
+    stored_leads = LeadRepository(
+        tmp_path / "leads.db"
+    ).get_all()
+
+    assert len(stored_leads) == 1
+    assert stored_leads[0].company_name == "Example Company"
+    assert str(stored_leads[0].email) == "sales@example.com"
+
+
+def test_pipeline_does_not_persist_failed_fetches(tmp_path):
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://broken.example"),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.side_effect = WebsiteFetchError(
+        "Website fetch failed."
+    )
+
+    database = LeadDatabase(tmp_path / "leads.db")
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        database=database,
+    )
+
+    result = pipeline.run("companies")
+
+    assert result.failed_fetches == 1
+    assert result.leads == []
+    assert database.count() == 0
+
+
+def test_pipeline_persists_multiple_leads(tmp_path):
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://company-one.example", position=1),
+        make_result("https://company-two.example", position=2),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.side_effect = [
+        FetchResult(
+            url="https://company-one.example",
+            status_code=200,
+            content="""
+                <html>
+                    <head>
+                        <title>Company One</title>
+                    </head>
+                    <body>
+                        Contact one@companyone.com
+                    </body>
+                </html>
+            """,
+        ),
+        FetchResult(
+            url="https://company-two.example",
+            status_code=200,
+            content="""
+                <html>
+                    <head>
+                        <title>Company Two</title>
+                    </head>
+                    <body>
+                        Contact two@companytwo.com
+                    </body>
+                </html>
+            """,
+        ),
+    ]
+
+    database = LeadDatabase(tmp_path / "leads.db")
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        database=database,
+    )
+
+    result = pipeline.run("software companies")
+
+    assert result.discovered == 2
+    assert result.unique_results == 2
+    assert result.fetched == 2
+    assert result.failed_fetches == 0
+    assert len(result.leads) == 2
+    assert database.count() == 2
+
+    stored_leads = LeadRepository(
+        tmp_path / "leads.db"
+    ).get_all()
+
+    assert [lead.company_name for lead in stored_leads] == [
+        "Company One",
+        "Company Two",
+    ]

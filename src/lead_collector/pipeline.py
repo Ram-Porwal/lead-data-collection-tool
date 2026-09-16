@@ -5,9 +5,10 @@ from lead_collector.extraction.exceptions import WebsiteFetchError
 from lead_collector.extraction.lead_extractor import LeadExtractor
 from lead_collector.extraction.parser import HTMLParser
 from lead_collector.extraction.website import WebsiteFetcher
+from lead_collector.models import Lead
 from lead_collector.processing.deduplication import deduplicate_results
 from lead_collector.processing.validation import LeadValidator
-from lead_collector.models import Lead
+from lead_collector.storage.database import LeadDatabase
 
 
 @dataclass(frozen=True)
@@ -31,12 +32,17 @@ class LeadCollectionPipeline:
         html_parser: HTMLParser | None = None,
         lead_extractor: LeadExtractor | None = None,
         lead_validator: LeadValidator | None = None,
+        database: LeadDatabase | None = None,
     ) -> None:
         self._discovery_provider = discovery_provider
         self._website_fetcher = website_fetcher or WebsiteFetcher()
         self._html_parser = html_parser or HTMLParser()
         self._lead_extractor = lead_extractor or LeadExtractor()
         self._lead_validator = lead_validator or LeadValidator()
+        self._database = database
+
+        if self._database:
+            self._database.initialize()
 
     def run(
         self,
@@ -79,6 +85,9 @@ class LeadCollectionPipeline:
             )
 
             lead = self._lead_validator.validate(lead)
+
+            if self._database:
+                self._database.insert(lead)
 
             leads.append(lead)
 
