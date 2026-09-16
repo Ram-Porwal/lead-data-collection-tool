@@ -1,5 +1,8 @@
+from pathlib import Path
 from dataclasses import dataclass
 
+from lead_collector.export.csv_exporter import CSVLeadExporter
+from lead_collector.export.excel_exporter import ExcelLeadExporter
 from lead_collector.discovery.base import LeadDiscoveryProvider
 from lead_collector.extraction.exceptions import WebsiteFetchError
 from lead_collector.extraction.lead_extractor import LeadExtractor
@@ -33,13 +36,17 @@ class LeadCollectionPipeline:
         lead_extractor: LeadExtractor | None = None,
         lead_validator: LeadValidator | None = None,
         database: LeadDatabase | None = None,
-    ) -> None:
+        csv_exporter: CSVLeadExporter | None = None,
+        excel_exporter: ExcelLeadExporter | None = None,
+        ) -> None:
         self._discovery_provider = discovery_provider
         self._website_fetcher = website_fetcher or WebsiteFetcher()
         self._html_parser = html_parser or HTMLParser()
         self._lead_extractor = lead_extractor or LeadExtractor()
         self._lead_validator = lead_validator or LeadValidator()
         self._database = database
+        self._csv_exporter = csv_exporter
+        self._excel_exporter = excel_exporter
 
         if self._database:
             self._database.initialize()
@@ -49,6 +56,8 @@ class LeadCollectionPipeline:
         query: str,
         *,
         max_results: int = 10,
+        csv_path: str | Path | None = None,
+        excel_path: str | Path | None = None,
     ) -> PipelineResult:
         """Run the complete lead collection pipeline."""
 
@@ -90,6 +99,18 @@ class LeadCollectionPipeline:
                 self._database.insert(lead)
 
             leads.append(lead)
+
+            if self._csv_exporter and csv_path:
+                self._csv_exporter.export(
+                    leads,
+                    csv_path,
+                )
+
+            if self._excel_exporter and excel_path:
+                self._excel_exporter.export(
+                    leads,
+                    excel_path,
+                )
 
         return PipelineResult(
             discovered=len(discovered_results),

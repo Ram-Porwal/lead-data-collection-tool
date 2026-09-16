@@ -7,6 +7,8 @@ from lead_collector.models import ValidationStatus
 from lead_collector.pipeline import LeadCollectionPipeline
 from lead_collector.storage.database import LeadDatabase
 from lead_collector.storage.repository import LeadRepository
+from lead_collector.export.csv_exporter import CSVLeadExporter
+from lead_collector.export.excel_exporter import ExcelLeadExporter
 
 
 def make_result(
@@ -300,3 +302,112 @@ def test_pipeline_persists_multiple_leads(tmp_path):
         "Company One",
         "Company Two",
     ]
+
+
+def test_pipeline_exports_csv_and_excel(tmp_path):
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.return_value = FetchResult(
+        url="https://example.com",
+        status_code=200,
+        content="""
+            <html>
+                <head>
+                    <title>Example Company</title>
+                </head>
+                <body>
+                    Contact sales@example.com
+                </body>
+            </html>
+        """,
+    )
+
+    csv_exporter = CSVLeadExporter()
+    excel_exporter = ExcelLeadExporter()
+
+    csv_path = tmp_path / "exports" / "leads.csv"
+    excel_path = tmp_path / "exports" / "leads.xlsx"
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        csv_exporter=csv_exporter,
+        excel_exporter=excel_exporter,
+    )
+
+    result = pipeline.run(
+        "software companies",
+        csv_path=csv_path,
+        excel_path=excel_path,
+    )
+
+    assert len(result.leads) == 1
+    assert csv_path.exists()
+    assert excel_path.exists()
+
+
+def test_pipeline_exports_lead_data(tmp_path):
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.return_value = FetchResult(
+        url="https://example.com",
+        status_code=200,
+        content="""
+            <html>
+                <head>
+                    <title>Example Company</title>
+                </head>
+                <body>
+                    Contact sales@example.com
+                </body>
+            </html>
+        """,
+    )
+
+    csv_exporter = CSVLeadExporter()
+    excel_exporter = ExcelLeadExporter()
+
+    csv_path = tmp_path / "leads.csv"
+    excel_path = tmp_path / "leads.xlsx"
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        csv_exporter=csv_exporter,
+        excel_exporter=excel_exporter,
+    )
+
+    result = pipeline.run(
+        "software companies",
+        csv_path=csv_path,
+        excel_path=excel_path,
+    )
+
+    assert len(result.leads) == 1
+
+    # Verify CSV content.
+    csv_content = csv_path.read_text(encoding="utf-8")
+
+    assert "Example Company" in csv_content
+    assert "sales@example.com" in csv_content
+
+    # Verify Excel content.
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(excel_path)
+    worksheet = workbook["Leads"]
+
+    headers = [cell.value for cell in worksheet[1]]
+    company_index = headers.index("company_name") + 1
+    email_index = headers.index("email") + 1
+
+    assert worksheet.cell(row=2, column=company_index).value == "Example Company"
+    assert worksheet.cell(row=2, column=email_index).value == "sales@example.com"
