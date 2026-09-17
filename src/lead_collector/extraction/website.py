@@ -12,6 +12,7 @@ class FetchResult:
     url: str
     status_code: int
     content: str
+    is_challenge_page: bool = False
 
 
 class WebsiteFetcher:
@@ -42,4 +43,26 @@ class WebsiteFetcher:
             url=url,
             status_code=response.status_code,
             content=response.text,
+            is_challenge_page=self._is_challenge_page(response.text),
+        )
+
+    @staticmethod
+    def _is_challenge_page(content: str) -> bool:
+        """Detect common CAPTCHA or browser challenge pages."""
+
+        content_lower = content.lower()
+
+        strong_indicators = (
+            "radware captcha page",
+            "please complete the captcha",
+            "verify you are human",
+            "human verification",
+            "security verification",
+            "checking your browser",
+            "challenge page",
+        )
+
+        return any(
+            indicator in content_lower
+            for indicator in strong_indicators
         )

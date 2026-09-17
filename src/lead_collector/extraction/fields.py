@@ -1,13 +1,12 @@
 import re
 from urllib.parse import urlparse
 
+import phonenumbers
+from phonenumbers import NumberParseException
+
 
 EMAIL_PATTERN = re.compile(
     r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
-)
-
-PHONE_PATTERN = re.compile(
-    r"(?<!\d)(?:\+?\d[\d\s().-]{7,}\d)(?!\d)"
 )
 
 
@@ -29,14 +28,24 @@ def extract_emails(text: str) -> list[str]:
 
 
 def extract_phone_numbers(text: str) -> list[str]:
-    """Extract likely phone numbers from text."""
-    matches = PHONE_PATTERN.findall(text)
+    """Extract and validate phone numbers from text."""
 
     unique_numbers: list[str] = []
     seen: set[str] = set()
 
-    for number in matches:
-        normalized = re.sub(r"\s+", " ", number).strip()
+    for match in phonenumbers.PhoneNumberMatcher(text, None):
+        number = match.number
+
+        if not phonenumbers.is_possible_number(number):
+            continue
+
+        if not phonenumbers.is_valid_number(number):
+            continue
+
+        normalized = phonenumbers.format_number(
+            number,
+            phonenumbers.PhoneNumberFormat.INTERNATIONAL,
+        )
 
         if normalized not in seen:
             seen.add(normalized)

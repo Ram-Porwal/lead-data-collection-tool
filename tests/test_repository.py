@@ -8,9 +8,11 @@ def create_lead(
     score: int,
     status: ValidationStatus,
 ) -> Lead:
+    slug = company_name.lower().replace(" ", "-")
+
     return Lead(
         company_name=company_name,
-        website="https://example.com",
+        website=f"https://{slug}.example.com",
         email=f"{company_name.lower().replace(' ', '')}@example.com",
         lead_score=score,
         validation_status=status,

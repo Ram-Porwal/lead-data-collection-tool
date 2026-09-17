@@ -25,14 +25,14 @@ def test_extract_emails_returns_empty_for_no_matches():
 
 def test_extract_phone_numbers():
     text = """
-    Call us at +91 98765 43210 or +1 (555) 123-4567.
+    Call us at +91 98765 43210 or +1 (212) 867-5309.
     """
 
     result = extract_phone_numbers(text)
 
     assert result == [
         "+91 98765 43210",
-        "+1 (555) 123-4567",
+        "+1 212-867-5309",
     ]
 
 
@@ -60,3 +60,19 @@ def test_extract_linkedin_url_returns_none_when_missing():
     ]
 
     assert extract_linkedin_url(urls) is None
+
+
+def test_extract_phone_numbers_ignores_decimal_numbers():
+    text = """
+    Ratings: 4.7 4.7 4.8
+    """
+
+    assert extract_phone_numbers(text) == []
+
+
+def test_extract_phone_numbers_ignores_year_like_values():
+    text = """
+    Updated in 2026 - 13.
+    """
+
+    assert extract_phone_numbers(text) == []

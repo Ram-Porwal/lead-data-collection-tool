@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from lead_collector.export.csv_exporter import CSVLeadExporter
 from lead_collector.export.excel_exporter import ExcelLeadExporter
 from lead_collector.discovery.base import LeadDiscoveryProvider
+from lead_collector.discovery.quality import DiscoveryQualityFilter
 from lead_collector.extraction.exceptions import WebsiteFetchError
 from lead_collector.extraction.lead_extractor import LeadExtractor
 from lead_collector.extraction.parser import HTMLParser
@@ -19,6 +20,7 @@ class PipelineResult:
     """Result of a lead collection pipeline run."""
 
     discovered: int
+    rejected_by_quality: int
     unique_results: int
     fetched: int
     failed_fetches: int
@@ -40,6 +42,7 @@ class LeadCollectionPipeline:
         excel_exporter: ExcelLeadExporter | None = None,
         ) -> None:
         self._discovery_provider = discovery_provider
+        self._quality_filter = DiscoveryQualityFilter()
         self._website_fetcher = website_fetcher or WebsiteFetcher()
         self._html_parser = html_parser or HTMLParser()
         self._lead_extractor = lead_extractor or LeadExtractor()
@@ -66,7 +69,11 @@ class LeadCollectionPipeline:
             max_results=max_results,
         )
 
-        unique_results = deduplicate_results(discovered_results)
+        quality_results = self._quality_filter.filter(
+            discovered_results
+        )
+
+        unique_results = deduplicate_results(quality_results)
 
         leads: list[Lead] = []
         fetched = 0
@@ -82,6 +89,9 @@ class LeadCollectionPipeline:
                 continue
 
             fetched += 1
+
+            if fetch_result.is_challenge_page:
+                continue
 
             page = self._html_parser.parse(
                 fetch_result.content,
@@ -112,8 +122,13 @@ class LeadCollectionPipeline:
                     excel_path,
                 )
 
+        rejected_by_quality = (
+            len(discovered_results) - len(quality_results)
+        )
+
         return PipelineResult(
             discovered=len(discovered_results),
+            rejected_by_quality=rejected_by_quality,
             unique_results=len(unique_results),
             fetched=fetched,
             failed_fetches=failed_fetches,

@@ -62,3 +62,73 @@ def test_fetch_uses_custom_user_agent():
         headers={"User-Agent": "TestBot/1.0"},
         timeout=10.0,
     )
+
+
+def test_fetch_detects_challenge_page():
+    response = MagicMock()
+    response.status_code = 200
+    response.text = """
+    <html>
+        <head><title>Radware Captcha Page</title></head>
+        <body>
+            Please complete the CAPTCHA to continue.
+        </body>
+    </html>
+    """
+
+    with patch(
+        "lead_collector.extraction.website.requests.get",
+        return_value=response,
+    ):
+        fetcher = WebsiteFetcher()
+
+        result = fetcher.fetch("https://example.com")
+
+    assert result.is_challenge_page is True
+
+
+def test_fetch_does_not_misclassify_normal_page_that_mentions_captcha():
+    response = MagicMock()
+    response.status_code = 200
+    response.text = """
+    <html>
+        <head><title>Example Company</title></head>
+        <body>
+            Our security policy explains how CAPTCHA helps prevent abuse.
+            Contact us at support@example.com.
+        </body>
+    </html>
+    """
+
+    with patch(
+        "lead_collector.extraction.website.requests.get",
+        return_value=response,
+    ):
+        fetcher = WebsiteFetcher()
+
+        result = fetcher.fetch("https://example.com")
+
+    assert result.is_challenge_page is False
+
+
+def test_fetch_detects_human_verification_page():
+    response = MagicMock()
+    response.status_code = 200
+    response.text = """
+    <html>
+        <head><title>Security Check</title></head>
+        <body>
+            Verify you are human before continuing.
+        </body>
+    </html>
+    """
+
+    with patch(
+        "lead_collector.extraction.website.requests.get",
+        return_value=response,
+    ):
+        fetcher = WebsiteFetcher()
+
+        result = fetcher.fetch("https://example.com")
+
+    assert result.is_challenge_page is True

@@ -411,3 +411,78 @@ def test_pipeline_exports_lead_data(tmp_path):
 
     assert worksheet.cell(row=2, column=company_index).value == "Example Company"
     assert worksheet.cell(row=2, column=email_index).value == "sales@example.com"
+
+
+def test_pipeline_skips_challenge_pages():
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.return_value = FetchResult(
+        url="https://example.com",
+        status_code=200,
+        content="""
+            <html>
+                <head>
+                    <title>Radware Captcha Page</title>
+                </head>
+                <body>
+                    Please complete the CAPTCHA to continue.
+                </body>
+            </html>
+        """,
+        is_challenge_page=True,
+    )
+
+    parser = MagicMock()
+    extractor = MagicMock()
+    validator = MagicMock()
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        html_parser=parser,
+        lead_extractor=extractor,
+        lead_validator=validator,
+    )
+
+    result = pipeline.run("software companies")
+
+    assert result.discovered == 1
+    assert result.unique_results == 1
+    assert result.fetched == 1
+    assert result.failed_fetches == 0
+    assert result.leads == []
+
+    parser.parse.assert_not_called()
+    extractor.extract.assert_not_called()
+    validator.validate.assert_not_called()
+
+
+def test_pipeline_processes_normal_page_when_not_challenge():
+    discovery = MagicMock()
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+    ]
+
+    fetcher = MagicMock()
+    fetcher.fetch.return_value = FetchResult(
+        url="https://example.com",
+        status_code=200,
+        content="<title>Example Company</title>",
+        is_challenge_page=False,
+    )
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+    )
+
+    result = pipeline.run("software companies")
+
+    assert result.fetched == 1
+    assert result.failed_fetches == 0
+    assert len(result.leads) == 1
+    assert result.leads[0].company_name == "Example Company"

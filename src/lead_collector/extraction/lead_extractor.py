@@ -35,10 +35,57 @@ class LeadExtractor:
         title: str | None,
         source_url: str,
     ) -> str:
-        """Determine a reasonable company name."""
+        """Determine a reasonable company name from page title or URL."""
 
         if title:
-            return title
+            title = title.strip()
+
+            if "|" in title:
+                parts = [
+                    part.strip()
+                    for part in title.split("|")
+                    if part.strip()
+                ]
+
+                if parts:
+                    generic_suffixes = {
+                        "official website",
+                        "official site",
+                        "home",
+                        "homepage",
+                        "welcome",
+                    }
+
+                    last_part = parts[-1]
+
+                    if (
+                        last_part.lower() in generic_suffixes
+                        and len(parts) > 1
+                    ):
+                        return parts[-2]
+
+                    return last_part
+
+            generic_title_patterns = (
+                "software product development",
+                "software development company",
+                "software development services",
+                "software company",
+                "engineering experts",
+                "technology solutions",
+                "it services",
+                "digital solutions",
+                "web development",
+                "mobile app development",
+            )
+
+            title_lower = title.lower()
+
+            if not any(
+                pattern in title_lower
+                for pattern in generic_title_patterns
+            ):
+                return title
 
         hostname = urlparse(source_url).hostname
 

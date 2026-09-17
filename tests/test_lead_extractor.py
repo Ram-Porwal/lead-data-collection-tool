@@ -67,3 +67,86 @@ def test_extract_uses_domain_when_title_is_missing():
     )
 
     assert result.company_name == "Acme Solutions"
+
+
+def test_extract_cleans_seo_company_title():
+    page = ParsedPage(
+        title="Software Development Company Since 1987 | SPEC India",
+        description="Software development company.",
+        text="Contact us.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://www.spec-india.com",
+    )
+
+    assert result.company_name == "SPEC India"
+
+
+def test_extract_uses_text_after_last_pipe():
+    page = ParsedPage(
+        title="Best Software Solutions | Technology | Acme Technologies",
+        description=None,
+        text="We build software.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://acme-technologies.com",
+    )
+
+    assert result.company_name == "Acme Technologies"
+
+
+def test_extract_ignores_empty_text_after_pipe():
+    page = ParsedPage(
+        title="Acme Technologies | ",
+        description=None,
+        text="We build software.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://acme-technologies.com",
+    )
+
+    assert result.company_name == "Acme Technologies"
+
+
+def test_extract_ignores_generic_website_title_suffix():
+    page = ParsedPage(
+        title="Acme Technologies | Official Website",
+        description=None,
+        text="We build software.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://acme-technologies.com",
+    )
+
+    assert result.company_name == "Acme Technologies"
+
+
+def test_extract_prefers_company_name_from_talentica_style_title():
+    page = ParsedPage(
+        title=(
+            "Software Product Development Company & "
+            "Engineering Experts"
+        ),
+        description="Software product development company.",
+        text="We build software products and engineering solutions.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://www.talentica.com",
+    )
+
+    assert result.company_name == "Talentica"
