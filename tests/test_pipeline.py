@@ -406,8 +406,8 @@ def test_pipeline_exports_lead_data(tmp_path):
     worksheet = workbook["Leads"]
 
     headers = [cell.value for cell in worksheet[1]]
-    company_index = headers.index("company_name") + 1
-    email_index = headers.index("email") + 1
+    company_index = headers.index("Company Name") + 1
+    email_index = headers.index("Email") + 1
 
     assert worksheet.cell(row=2, column=company_index).value == "Example Company"
     assert worksheet.cell(row=2, column=email_index).value == "sales@example.com"
