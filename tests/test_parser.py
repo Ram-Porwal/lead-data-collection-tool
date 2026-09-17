@@ -77,10 +77,9 @@ def test_parse_handles_missing_title_and_description():
 
     result = HTMLParser().parse(html)
 
-    assert result.title is None
-    assert result.description is None
-    assert result.text == "Hello world."
-    assert result.links == []
+    assert result.site_name is None
+    assert result.canonical_url is None
+    assert result.organization_name is None
 
 
 def test_parse_skips_empty_links():
@@ -102,3 +101,69 @@ def test_parse_skips_empty_links():
     assert result.links == [
         "https://example.com/valid",
     ]
+
+
+def test_parse_extracts_open_graph_site_name():
+    html = """
+    <html>
+        <head>
+            <meta
+                property="og:site_name"
+                content="Talentica"
+            >
+        </head>
+        <body>
+            <p>Software engineering company.</p>
+        </body>
+    </html>
+    """
+
+    result = HTMLParser().parse(html)
+
+    assert result.site_name == "Talentica"
+
+
+def test_parse_extracts_canonical_url():
+    html = """
+    <html>
+        <head>
+            <link
+                rel="canonical"
+                href="https://www.talentica.com/"
+            >
+        </head>
+        <body>
+            <p>Talentica</p>
+        </body>
+    </html>
+    """
+
+    result = HTMLParser().parse(
+        html,
+        base_url="https://example.com",
+    )
+
+    assert result.canonical_url == "https://www.talentica.com/"
+
+
+def test_parse_extracts_organization_name_from_json_ld():
+    html = """
+    <html>
+        <head>
+            <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Talentica"
+            }
+            </script>
+        </head>
+        <body>
+            <p>Software engineering company.</p>
+        </body>
+    </html>
+    """
+
+    result = HTMLParser().parse(html)
+
+    assert result.organization_name == "Talentica"

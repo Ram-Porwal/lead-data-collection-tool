@@ -11,6 +11,7 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "email-validator",
+    "phonenumbers",
 ]
 
 [tool.setuptools.packages.find]

@@ -19,7 +19,12 @@ class LeadExtractor:
         phone_numbers = extract_phone_numbers(page.text)
         linkedin_url = extract_linkedin_url(page.links)
 
-        company_name = self._extract_company_name(page.title, source_url)
+        company_name = self._extract_company_name(
+            title=page.title,
+            source_url=source_url,
+            site_name=page.site_name,
+            organization_name=page.organization_name,
+        )
 
         return Lead(
             company_name=company_name,
@@ -34,8 +39,16 @@ class LeadExtractor:
     def _extract_company_name(
         title: str | None,
         source_url: str,
+        site_name: str | None = None,
+        organization_name: str | None = None,
     ) -> str:
-        """Determine a reasonable company name from page title or URL."""
+        """Determine a reasonable company name from page metadata or URL."""
+
+        if organization_name:
+            return organization_name.strip()
+
+        if site_name:
+            return site_name.strip()
 
         if title:
             title = title.strip()

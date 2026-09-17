@@ -150,3 +150,41 @@ def test_extract_prefers_company_name_from_talentica_style_title():
     )
 
     assert result.company_name == "Talentica"
+
+
+def test_extract_prefers_json_ld_organization_name():
+    page = ParsedPage(
+        title="Software Product Development Company & Engineering Experts",
+        description="Software product development company.",
+        site_name="Talentica",
+        canonical_url="https://www.talentica.com/",
+        organization_name="Talentica",
+        text="Software engineering company.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://www.talentica.com",
+    )
+
+    assert result.company_name == "Talentica"
+
+
+def test_extract_prefers_site_name_over_generic_title():
+    page = ParsedPage(
+        title="Enterprise Software Development & Technology Solutions",
+        description="Technology company.",
+        site_name="Example Technologies",
+        canonical_url="https://example.com/",
+        organization_name=None,
+        text="We build enterprise software.",
+        links=[],
+    )
+
+    result = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert result.company_name == "Example Technologies"
