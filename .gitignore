@@ -23,3 +23,5 @@ data/exports/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/exports/.gitkeep
+# Pytest Cache
+.pytest_cache/
