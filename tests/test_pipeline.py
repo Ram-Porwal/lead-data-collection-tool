@@ -486,3 +486,60 @@ def test_pipeline_processes_normal_page_when_not_challenge():
     assert result.failed_fetches == 0
     assert len(result.leads) == 1
     assert result.leads[0].company_name == "Example Company"
+
+
+def test_pipeline_deduplicates_extracted_leads():
+    discovery = MagicMock()
+
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+        make_result("https://example.org"),
+    ]
+
+    fetcher = MagicMock()
+
+    fetcher.fetch.side_effect = [
+        FetchResult(
+            url="https://example.com",
+            status_code=200,
+            content="""
+                <html>
+                    <head>
+                        <title>Company One</title>
+                    </head>
+                    <body>
+                        Contact sales@example.com
+                    </body>
+                </html>
+            """,
+        ),
+        FetchResult(
+            url="https://example.org",
+            status_code=200,
+            content="""
+                <html>
+                    <head>
+                        <title>Company One Duplicate</title>
+                    </head>
+                    <body>
+                        Contact SALES@example.com
+                    </body>
+                </html>
+            """,
+        ),
+    ]
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+    )
+
+    result = pipeline.run("software companies")
+
+    assert result.discovered == 2
+    assert result.unique_results == 2
+    assert result.fetched == 2
+
+    assert len(result.leads) == 1
+    assert result.leads[0].company_name == "Company One"
+    assert str(result.leads[0].email) == "sales@example.com"

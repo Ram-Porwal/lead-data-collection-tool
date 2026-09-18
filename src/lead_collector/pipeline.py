@@ -11,6 +11,7 @@ from lead_collector.extraction.parser import HTMLParser
 from lead_collector.extraction.website import WebsiteFetcher
 from lead_collector.models import Lead
 from lead_collector.processing.deduplication import deduplicate_results
+from lead_collector.processing.lead_deduplication import deduplicate_leads
 from lead_collector.processing.validation import LeadValidator
 from lead_collector.storage.database import LeadDatabase
 
@@ -105,22 +106,25 @@ class LeadCollectionPipeline:
 
             lead = self._lead_validator.validate(lead)
 
+            leads.append(lead)
+
+        leads = deduplicate_leads(leads)
+
+        for lead in leads:
             if self._database:
                 self._database.insert(lead)
 
-            leads.append(lead)
+        if self._csv_exporter and csv_path:
+            self._csv_exporter.export(
+                leads,
+                csv_path,
+            )
 
-            if self._csv_exporter and csv_path:
-                self._csv_exporter.export(
-                    leads,
-                    csv_path,
-                )
-
-            if self._excel_exporter and excel_path:
-                self._excel_exporter.export(
-                    leads,
-                    excel_path,
-                )
+        if self._excel_exporter and excel_path:
+            self._excel_exporter.export(
+                leads,
+                excel_path,
+            )
 
         rejected_by_quality = (
             len(discovered_results) - len(quality_results)
