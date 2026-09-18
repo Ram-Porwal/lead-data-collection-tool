@@ -70,6 +70,7 @@ class LeadRepository:
             contact_role=row["contact_role"],
             email=row["email"],
             phone=row["phone"],
+            phone_country=row["phone_country"],
             linkedin_url=row["linkedin_url"],
             source_url=row["source_url"],
             lead_score=row["lead_score"],

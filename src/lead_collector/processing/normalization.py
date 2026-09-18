@@ -31,3 +31,37 @@ def normalize_url(url: str) -> str:
             "",  # Fragments are ignored for deduplication.
         )
     )
+
+
+COUNTRY_ALIASES = {
+    "IN": "India",
+    "IND": "India",
+    "INDIA": "India",
+    "US": "United States",
+    "USA": "United States",
+    "UNITED STATES": "United States",
+    "UK": "United Kingdom",
+    "GB": "United Kingdom",
+    "GBR": "United Kingdom",
+    "UNITED KINGDOM": "United Kingdom",
+    "UAE": "United Arab Emirates",
+    "AE": "United Arab Emirates",
+    "ARE": "United Arab Emirates",
+}
+
+
+def normalize_country(country: str | None) -> str | None:
+    """Normalize common country codes and name variants."""
+
+    if not country:
+        return None
+
+    normalized = country.strip()
+
+    if not normalized:
+        return None
+
+    return COUNTRY_ALIASES.get(
+        normalized.upper(),
+        normalized,
+    )

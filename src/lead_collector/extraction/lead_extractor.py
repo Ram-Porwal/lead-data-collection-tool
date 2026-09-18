@@ -4,9 +4,12 @@ from lead_collector.extraction.fields import (
     extract_emails,
     extract_linkedin_url,
     extract_phone_numbers,
+    get_phone_country,
+    normalize_phone_number,
 )
-from lead_collector.extraction.parser import ParsedPage
 from lead_collector.models import Lead
+from lead_collector.extraction.parser import ParsedPage
+from lead_collector.processing.normalization import normalize_country
 
 
 class LeadExtractor:
@@ -26,11 +29,30 @@ class LeadExtractor:
             organization_name=page.organization_name,
         )
 
+        email = page.organization_email or (
+            emails[0] if emails else None
+        )
+
+        structured_phone = normalize_phone_number(
+            page.organization_telephone
+        ) if page.organization_telephone else None
+
+        phone = structured_phone or (
+            phone_numbers[0] if phone_numbers else None
+        )
+
+        phone_country = get_phone_country(phone) if phone else None
+
         return Lead(
             company_name=company_name,
             website=source_url,
-            email=emails[0] if emails else None,
-            phone=phone_numbers[0] if phone_numbers else None,
+            industry=page.organization_industry,
+            city=page.organization_city,
+            state=page.organization_state,
+            country=normalize_country(page.organization_country),
+            email=email,
+            phone=phone,
+            phone_country=phone_country,
             linkedin_url=linkedin_url,
             source_url=source_url,
         )

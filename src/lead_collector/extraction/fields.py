@@ -54,6 +54,29 @@ def extract_phone_numbers(text: str) -> list[str]:
     return unique_numbers
 
 
+def normalize_phone_number(phone: str) -> str | None:
+    """Validate and normalize a single phone number."""
+
+    if not phone or not phone.strip():
+        return None
+
+    try:
+        parsed = phonenumbers.parse(phone, None)
+    except NumberParseException:
+        return None
+
+    if not phonenumbers.is_possible_number(parsed):
+        return None
+
+    if not phonenumbers.is_valid_number(parsed):
+        return None
+
+    return phonenumbers.format_number(
+        parsed,
+        phonenumbers.PhoneNumberFormat.INTERNATIONAL,
+    )
+
+
 def extract_linkedin_url(urls: list[str]) -> str | None:
     """Find the first LinkedIn profile or company URL."""
     for url in urls:
@@ -68,3 +91,20 @@ def extract_linkedin_url(urls: list[str]) -> str | None:
             return url
 
     return None
+
+
+def get_phone_country(phone: str) -> str | None:
+    """Return the ISO 3166-1 alpha-2 region code for a phone number."""
+
+    if not phone or not phone.strip():
+        return None
+
+    try:
+        parsed = phonenumbers.parse(phone, None)
+    except NumberParseException:
+        return None
+
+    if not phonenumbers.is_valid_number(parsed):
+        return None
+
+    return phonenumbers.region_code_for_number(parsed)

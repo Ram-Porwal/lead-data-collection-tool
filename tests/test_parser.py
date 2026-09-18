@@ -167,3 +167,87 @@ def test_parse_extracts_organization_name_from_json_ld():
     result = HTMLParser().parse(html)
 
     assert result.organization_name == "Talentica"
+
+
+def test_parse_extracts_organization_metadata():
+    html = """
+    <html>
+        <head>
+            <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Example Technologies",
+                "industry": "Software",
+                "email": "sales@example.com",
+                "telephone": "+91 98765 43210",
+                "address": {
+                    "@type": "PostalAddress",
+                    "addressLocality": "Ahmedabad",
+                    "addressRegion": "Gujarat",
+                    "addressCountry": "India"
+                }
+            }
+            </script>
+        </head>
+        <body>
+            Example Technologies
+        </body>
+    </html>
+    """
+
+    page = HTMLParser().parse(
+        html,
+        base_url="https://example.com",
+    )
+
+    assert page.organization_name == "Example Technologies"
+    assert page.organization_industry == "Software"
+    assert page.organization_email == "sales@example.com"
+    assert page.organization_telephone == "+91 98765 43210"
+    assert page.organization_city == "Ahmedabad"
+    assert page.organization_state == "Gujarat"
+    assert page.organization_country == "India"
+
+
+def test_parse_handles_nested_address_country():
+    html = """
+    <script type="application/ld+json">
+    {
+        "@type": "Organization",
+        "name": "Example Technologies",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Ahmedabad",
+            "addressRegion": "Gujarat",
+            "addressCountry": {
+                "@type": "Country",
+                "name": "India"
+            }
+        }
+    }
+    </script>
+    """
+
+    page = HTMLParser().parse(html)
+
+    assert page.organization_name == "Example Technologies"
+    assert page.organization_city == "Ahmedabad"
+    assert page.organization_state == "Gujarat"
+    assert page.organization_country == "India"
+
+
+def test_parse_ignores_malformed_organization_json():
+    html = """
+    <script type="application/ld+json">
+    {"@type": "Organization", "name":
+    </script>
+
+    <title>Example Company</title>
+    """
+
+    page = HTMLParser().parse(html)
+
+    assert page.organization_name is None
+    assert page.organization_industry is None
+    assert page.organization_email is None

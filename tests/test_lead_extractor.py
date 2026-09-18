@@ -188,3 +188,144 @@ def test_extract_prefers_site_name_over_generic_title():
     )
 
     assert result.company_name == "Example Technologies"
+
+
+def test_extract_uses_organization_metadata():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text="Example Company",
+        links=[],
+        organization_name="Example Technologies",
+        organization_industry="Software",
+        organization_email="structured@example.com",
+        organization_telephone="+91 98765 43210",
+        organization_city="Ahmedabad",
+        organization_state="Gujarat",
+        organization_country="India",
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.company_name == "Example Technologies"
+    assert lead.industry == "Software"
+    assert lead.email == "structured@example.com"
+    assert lead.phone == "+91 98765 43210"
+    assert lead.city == "Ahmedabad"
+    assert lead.state == "Gujarat"
+    assert lead.country == "India"
+
+
+def test_extract_falls_back_to_page_text_when_structured_contact_data_missing():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text=(
+            "Contact us at fallback@example.com "
+            "or call +91 98765 43210"
+        ),
+        links=[],
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.email == "fallback@example.com"
+    assert lead.phone == "+91 98765 43210"
+
+
+def test_extract_rejects_invalid_structured_phone():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text="Contact sales@example.com",
+        links=[],
+        organization_name="Example Technologies",
+        organization_telephone="+91 123",
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.phone is None
+
+
+def test_extract_normalizes_structured_phone():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text="Example Company",
+        links=[],
+        organization_name="Example Technologies",
+        organization_telephone="+1 (212) 867-5309",
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.phone == "+1 212-867-5309"
+
+
+def test_extract_normalizes_structured_country():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text="Example Company",
+        links=[],
+        organization_name="Example Technologies",
+        organization_country="IN",
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.country == "India"
+
+
+def test_extract_sets_phone_country():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text="Example Company",
+        links=[],
+        organization_name="Example Technologies",
+        organization_telephone="+1 (212) 867-5309",
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.phone == "+1 212-867-5309"
+    assert lead.phone_country == "US"
+
+
+def test_extract_sets_indian_phone_country():
+    page = ParsedPage(
+        title="Example Company",
+        description=None,
+        text="Example Company",
+        links=[],
+        organization_name="Example Technologies",
+        organization_telephone="+91 98765 43210",
+    )
+
+    lead = LeadExtractor().extract(
+        page,
+        "https://example.com",
+    )
+
+    assert lead.phone == "+91 98765 43210"
+    assert lead.phone_country == "IN"

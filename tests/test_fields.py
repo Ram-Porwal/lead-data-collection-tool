@@ -76,3 +76,59 @@ def test_extract_phone_numbers_ignores_year_like_values():
     """
 
     assert extract_phone_numbers(text) == []
+
+
+def test_normalize_phone_number():
+    from lead_collector.extraction.fields import normalize_phone_number
+
+    assert (
+        normalize_phone_number("+91 98765 43210")
+        == "+91 98765 43210"
+    )
+
+
+def test_normalize_phone_number_formats_valid_number():
+    from lead_collector.extraction.fields import normalize_phone_number
+
+    assert (
+        normalize_phone_number("+1 (212) 867-5309")
+        == "+1 212-867-5309"
+    )
+
+
+def test_normalize_phone_number_rejects_invalid_number():
+    from lead_collector.extraction.fields import normalize_phone_number
+
+    assert normalize_phone_number("+91 123") is None
+
+
+def test_normalize_phone_number_rejects_malformed_input():
+    from lead_collector.extraction.fields import normalize_phone_number
+
+    assert normalize_phone_number("not a phone number") is None
+
+
+def test_normalize_phone_number_handles_empty_input():
+    from lead_collector.extraction.fields import normalize_phone_number
+
+    assert normalize_phone_number("") is None
+
+
+def test_get_phone_country():
+    from lead_collector.extraction.fields import get_phone_country
+
+    assert get_phone_country("+91 98765 43210") == "IN"
+    assert get_phone_country("+1 (212) 867-5309") == "US"
+
+
+def test_get_phone_country_rejects_invalid_number():
+    from lead_collector.extraction.fields import get_phone_country
+
+    assert get_phone_country("+91 123") is None
+
+
+def test_get_phone_country_handles_empty_input():
+    from lead_collector.extraction.fields import get_phone_country
+
+    assert get_phone_country("") is None
+    assert get_phone_country("   ") is None

@@ -38,6 +38,7 @@ class Lead(BaseModel):
     contact_role: str | None = None
     email: EmailStr | None = None
     phone: str | None = None
+    phone_country: str | None = None
 
     # Online presence
     linkedin_url: HttpUrl | None = None

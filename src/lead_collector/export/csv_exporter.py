@@ -19,6 +19,7 @@ class CSVLeadExporter:
         "contact_role",
         "email",
         "phone",
+        "phone_country",
         "linkedin_url",
         "source_url",
         "lead_score",
@@ -70,6 +71,7 @@ class CSVLeadExporter:
                             else ""
                         ),
                         "phone": lead.phone or "",
+                        "phone_country": lead.phone_country or "",
                         "linkedin_url": (
                             str(lead.linkedin_url)
                             if lead.linkedin_url

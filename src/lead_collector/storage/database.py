@@ -35,6 +35,7 @@ class LeadDatabase:
                     contact_role TEXT,
                     email TEXT,
                     phone TEXT,
+                    phone_country TEXT,
                     linkedin_url TEXT,
                     source_url TEXT,
                     lead_score INTEGER NOT NULL,
@@ -63,6 +64,11 @@ class LeadDatabase:
         if "website_key" not in columns:
             connection.execute(
                 "ALTER TABLE leads ADD COLUMN website_key TEXT"
+            )
+
+        if "phone_country" not in columns:
+            connection.execute(
+                "ALTER TABLE leads ADD COLUMN phone_country TEXT"
             )
 
         self._backfill_website_keys(connection)

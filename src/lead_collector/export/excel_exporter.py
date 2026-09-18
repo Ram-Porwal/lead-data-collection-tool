@@ -24,6 +24,7 @@ class ExcelLeadExporter:
         "contact_role",
         "email",
         "phone",
+        "phone_country",
         "linkedin_url",
         "lead_score",
         "validation_status",
@@ -43,6 +44,7 @@ class ExcelLeadExporter:
         "contact_role": "Contact Role",
         "email": "Email",
         "phone": "Phone",
+        "phone_country": "Phone Country",
         "linkedin_url": "LinkedIn",
         "lead_score": "Lead Score",
         "validation_status": "Validation Status",
@@ -68,6 +70,7 @@ class ExcelLeadExporter:
         "contact_role": 20,
         "email": 30,
         "phone": 20,
+        "phone_country": 16,
         "linkedin_url": 18,
         "lead_score": 12,
         "validation_status": 20,
@@ -151,6 +154,7 @@ class ExcelLeadExporter:
                 "contact_role": lead.contact_role or "",
                 "email": str(lead.email) if lead.email else "",
                 "phone": lead.phone or "",
+                "phone_country": lead.phone_country,
                 "linkedin_url": (
                     str(lead.linkedin_url)
                     if lead.linkedin_url
