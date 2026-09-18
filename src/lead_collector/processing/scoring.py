@@ -7,27 +7,25 @@ class LeadScorer:
     def score(self, lead: Lead) -> int:
         """Return a lead quality score from 0 to 100."""
 
-        score = 0
+        return self.breakdown(lead)["total"]
 
-        if lead.company_name:
-            score += 20
+    def breakdown(self, lead: Lead) -> dict[str, int]:
+        """Return the score contribution of each lead data category."""
 
-        if lead.website:
-            score += 20
+        breakdown = {
+            "company_name": 20 if lead.company_name else 0,
+            "website": 20 if lead.website else 0,
+            "email": 25 if lead.email else 0,
+            "phone": 15 if lead.phone else 0,
+            "linkedin_url": 10 if lead.linkedin_url else 0,
+            "industry": 5 if lead.industry else 0,
+            "location": (
+                5
+                if lead.city or lead.state or lead.country
+                else 0
+            ),
+        }
 
-        if lead.email:
-            score += 25
+        breakdown["total"] = sum(breakdown.values())
 
-        if lead.phone:
-            score += 15
-
-        if lead.linkedin_url:
-            score += 10
-
-        if lead.industry:
-            score += 5
-
-        if lead.city or lead.state or lead.country:
-            score += 5
-
-        return score
+        return breakdown
