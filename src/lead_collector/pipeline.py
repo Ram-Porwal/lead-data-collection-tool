@@ -13,6 +13,7 @@ from lead_collector.models import Lead
 from lead_collector.processing.deduplication import deduplicate_results
 from lead_collector.processing.lead_deduplication import deduplicate_leads
 from lead_collector.processing.validation import LeadValidator
+from lead_collector.reporting.summary import PipelineSummary
 from lead_collector.storage.database import LeadDatabase
 
 
@@ -135,22 +136,11 @@ class LeadCollectionPipeline:
                 self._database.insert(lead)
 
         if self._csv_exporter and csv_path:
-            self._csv_exporter.export(
-                leads,
-                csv_path,
-            )
+            self._csv_exporter.export(leads, csv_path)
 
-        if self._excel_exporter and excel_path:
-            self._excel_exporter.export(
-                leads,
-                excel_path,
-            )
+        rejected_by_quality = len(discovered_results) - len(quality_results)
 
-        rejected_by_quality = (
-            len(discovered_results) - len(quality_results)
-        )
-
-        return PipelineResult(
+        result = PipelineResult(
             discovered=len(discovered_results),
             rejected_by_quality=rejected_by_quality,
             unique_results=len(unique_results),
@@ -162,3 +152,13 @@ class LeadCollectionPipeline:
             invalid_leads=invalid_leads,
             leads=leads,
         )
+
+        if self._excel_exporter and excel_path:
+            summary = PipelineSummary.from_result(result)
+            self._excel_exporter.export(
+                leads,
+                excel_path,
+                summary=summary,
+            )
+
+        return result

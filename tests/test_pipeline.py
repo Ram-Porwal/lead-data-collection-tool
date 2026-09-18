@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+from openpyxl import load_workbook
 from lead_collector.discovery.models import DiscoveryResult
 from lead_collector.extraction.exceptions import WebsiteFetchError
 from lead_collector.extraction.website import FetchResult
@@ -543,3 +544,60 @@ def test_pipeline_deduplicates_extracted_leads():
     assert len(result.leads) == 1
     assert result.leads[0].company_name == "Company One"
     assert str(result.leads[0].email) == "sales@example.com"
+
+
+def test_pipeline_excel_export_includes_summary(tmp_path):
+    discovery = MagicMock()
+
+    discovery.search.return_value = [
+        make_result("https://example.com"),
+    ]
+
+    fetcher = MagicMock()
+
+    fetcher.fetch.return_value = FetchResult(
+        url="https://example.com",
+        status_code=200,
+        content="""
+            <html>
+                <head>
+                    <title>Example Company</title>
+                </head>
+                <body>
+                    Contact sales@example.com
+                </body>
+            </html>
+        """,
+    )
+
+    excel_exporter = ExcelLeadExporter()
+    excel_path = tmp_path / "leads.xlsx"
+
+    pipeline = LeadCollectionPipeline(
+        discovery_provider=discovery,
+        website_fetcher=fetcher,
+        excel_exporter=excel_exporter,
+    )
+
+    result = pipeline.run(
+        "software companies",
+        max_results=10,
+        excel_path=excel_path,
+    )
+
+    workbook = load_workbook(excel_path)
+
+    assert workbook.sheetnames == ["Summary", "Leads"]
+
+    summary = workbook["Summary"]
+
+    assert summary["B3"].value == result.discovered
+    assert summary["B4"].value == result.rejected_by_quality
+    assert summary["B5"].value == result.unique_results
+    assert summary["B6"].value == result.fetched
+    assert summary["B7"].value == result.failed_fetches
+    assert summary["B8"].value == result.challenge_pages
+    assert summary["B9"].value == result.lead_duplicates
+    assert summary["B10"].value == len(result.leads)
+    assert summary["B11"].value == result.valid_leads
+    assert summary["B12"].value == result.invalid_leads

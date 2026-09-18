@@ -8,6 +8,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
 
 from lead_collector.models import Lead
+from lead_collector.reporting.summary import PipelineSummary
 
 
 class ExcelLeadExporter:
@@ -83,6 +84,8 @@ class ExcelLeadExporter:
         self,
         leads: list[Lead],
         output_path: str | Path,
+        *,
+        summary: PipelineSummary | None = None,
     ) -> Path:
         """Export leads to a formatted Excel workbook."""
 
@@ -90,8 +93,16 @@ class ExcelLeadExporter:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         workbook = Workbook()
-        worksheet = workbook.active
-        worksheet.title = "Leads"
+
+        if summary is not None:
+            summary_worksheet = workbook.active
+            summary_worksheet.title = "Summary"
+            self._write_summary(summary_worksheet, summary)
+
+            worksheet = workbook.create_sheet("Leads")
+        else:
+            worksheet = workbook.active
+            worksheet.title = "Leads"
 
         self._write_headers(worksheet)
         self._write_leads(worksheet, leads)
@@ -100,6 +111,76 @@ class ExcelLeadExporter:
         workbook.save(path)
 
         return path
+
+    def _write_summary(
+        self,
+        worksheet,
+        summary: PipelineSummary,
+    ) -> None:
+        """Write pipeline metrics to a client-friendly summary worksheet."""
+
+        worksheet["A1"] = "Lead Collection Summary"
+        worksheet["A1"].font = Font(
+            bold=True,
+            size=16,
+            color="FFFFFF",
+        )
+        worksheet["A1"].fill = PatternFill(
+            fill_type="solid",
+            fgColor="1F4E78",
+        )
+        worksheet["A1"].alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+        )
+
+        worksheet.merge_cells("A1:B1")
+        worksheet.row_dimensions[1].height = 30
+
+        worksheet["A3"] = "Discovered Results"
+        worksheet["B3"] = summary.discovered
+
+        worksheet["A4"] = "Rejected by Quality"
+        worksheet["B4"] = summary.rejected_by_quality
+
+        worksheet["A5"] = "Unique Accepted Results"
+        worksheet["B5"] = summary.unique_results
+
+        worksheet["A6"] = "Websites Fetched"
+        worksheet["B6"] = summary.fetched
+
+        worksheet["A7"] = "Failed Fetches"
+        worksheet["B7"] = summary.failed_fetches
+
+        worksheet["A8"] = "Challenge Pages"
+        worksheet["B8"] = summary.challenge_pages
+
+        worksheet["A9"] = "Lead Duplicates"
+        worksheet["B9"] = summary.lead_duplicates
+
+        worksheet["A10"] = "Final Leads"
+        worksheet["B10"] = summary.final_leads
+
+        worksheet["A11"] = "Valid Leads"
+        worksheet["B11"] = summary.valid_leads
+
+        worksheet["A12"] = "Invalid Leads"
+        worksheet["B12"] = summary.invalid_leads
+
+        for cell in worksheet["A"][2:12]:
+            cell.font = Font(bold=True)
+
+        for row in range(3, 13):
+            worksheet.cell(row=row, column=1).alignment = Alignment(
+                vertical="center",
+            )
+            worksheet.cell(row=row, column=2).alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+            )
+
+        worksheet.column_dimensions["A"].width = 28
+        worksheet.column_dimensions["B"].width = 14
 
     def _write_headers(self, worksheet) -> None:
         """Write and format the worksheet headers."""

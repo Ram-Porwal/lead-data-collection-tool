@@ -5,6 +5,7 @@ from lead_collector.discovery.serpapi import SerpApiDiscoveryProvider
 from lead_collector.export.csv_exporter import CSVLeadExporter
 from lead_collector.export.excel_exporter import ExcelLeadExporter
 from lead_collector.pipeline import LeadCollectionPipeline
+from lead_collector.reporting.summary import PipelineSummary
 from lead_collector.storage.database import LeadDatabase
 
 
@@ -73,24 +74,23 @@ def main() -> None:
         print(f"Error: {error}")
         return
 
-    valid_leads = [
-        lead
-        for lead in result.leads
-        if lead.validation_status.value == "valid"
-    ]
+    summary = PipelineSummary.from_result(result)
 
     print()
     print("=" * 50)
     print("             Collection Complete")
     print("=" * 50)
     print()
-    print(f"Discovered results       : {result.discovered}")
-    print(f"Rejected by quality      : {result.rejected_by_quality}")
-    print(f"Unique accepted results : {result.unique_results}")
-    print(f"Websites fetched        : {result.fetched}")
-    print(f"Failed fetches     : {result.failed_fetches}")
-    print(f"Leads collected    : {len(result.leads)}")
-    print(f"Valid leads        : {len(valid_leads)}")
+    print(f"Discovered results       : {summary.discovered}")
+    print(f"Rejected by quality      : {summary.rejected_by_quality}")
+    print(f"Unique accepted results : {summary.unique_results}")
+    print(f"Websites fetched        : {summary.fetched}")
+    print(f"Failed fetches          : {summary.failed_fetches}")
+    print(f"Challenge pages         : {summary.challenge_pages}")
+    print(f"Lead duplicates         : {summary.lead_duplicates}")
+    print(f"Leads collected         : {summary.final_leads}")
+    print(f"Valid leads             : {summary.valid_leads}")
+    print(f"Invalid leads           : {summary.invalid_leads}")
     print()
     print("Output files:")
     print(f"SQLite : {database_path}")

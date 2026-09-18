@@ -2,6 +2,7 @@ from openpyxl import load_workbook
 
 from lead_collector.export.excel_exporter import ExcelLeadExporter
 from lead_collector.models import Lead, ValidationStatus
+from lead_collector.reporting.summary import PipelineSummary
 
 
 def create_lead() -> Lead:
@@ -159,3 +160,99 @@ def test_export_handles_empty_leads(tmp_path):
     assert worksheet.max_row == 1
     assert worksheet["A1"].value == "Company Name"
     assert worksheet["Q1"].value == "ID"
+
+
+def make_pipeline_summary() -> PipelineSummary:
+    return PipelineSummary(
+        discovered=10,
+        rejected_by_quality=2,
+        unique_results=8,
+        fetched=7,
+        failed_fetches=1,
+        challenge_pages=1,
+        lead_duplicates=1,
+        final_leads=6,
+        valid_leads=5,
+        invalid_leads=1,
+    )
+
+
+def test_export_creates_summary_sheet(tmp_path):
+    leads = [create_lead()]
+    output_path = tmp_path / "leads.xlsx"
+    summary = make_pipeline_summary()
+
+    ExcelLeadExporter().export(
+        leads,
+        output_path,
+        summary=summary,
+    )
+
+    workbook = load_workbook(output_path)
+
+    assert workbook.sheetnames == ["Summary", "Leads"]
+
+
+def test_summary_sheet_contains_pipeline_metrics(tmp_path):
+    leads = [create_lead()]
+    output_path = tmp_path / "leads.xlsx"
+    summary = make_pipeline_summary()
+
+    ExcelLeadExporter().export(
+        leads,
+        output_path,
+        summary=summary,
+    )
+
+    workbook = load_workbook(output_path)
+    worksheet = workbook["Summary"]
+
+    assert worksheet["A1"].value == "Lead Collection Summary"
+    assert worksheet["A3"].value == "Discovered Results"
+    assert worksheet["B3"].value == 10
+    assert worksheet["A4"].value == "Rejected by Quality"
+    assert worksheet["B4"].value == 2
+    assert worksheet["A5"].value == "Unique Accepted Results"
+    assert worksheet["B5"].value == 8
+    assert worksheet["A6"].value == "Websites Fetched"
+    assert worksheet["B6"].value == 7
+    assert worksheet["A7"].value == "Failed Fetches"
+    assert worksheet["B7"].value == 1
+    assert worksheet["A8"].value == "Challenge Pages"
+    assert worksheet["B8"].value == 1
+    assert worksheet["A9"].value == "Lead Duplicates"
+    assert worksheet["B9"].value == 1
+    assert worksheet["A10"].value == "Final Leads"
+    assert worksheet["B10"].value == 6
+    assert worksheet["A11"].value == "Valid Leads"
+    assert worksheet["B11"].value == 5
+    assert worksheet["A12"].value == "Invalid Leads"
+    assert worksheet["B12"].value == 1
+
+
+def test_summary_sheet_is_first_worksheet(tmp_path):
+    leads = [create_lead()]
+    output_path = tmp_path / "leads.xlsx"
+    summary = make_pipeline_summary()
+
+    ExcelLeadExporter().export(
+        leads,
+        output_path,
+        summary=summary,
+    )
+
+    workbook = load_workbook(output_path)
+
+    assert workbook.sheetnames[0] == "Summary"
+    assert workbook.sheetnames[1] == "Leads"
+
+
+def test_export_without_summary_preserves_existing_api(tmp_path):
+    leads = [create_lead()]
+    output_path = tmp_path / "leads.xlsx"
+
+    ExcelLeadExporter().export(leads, output_path)
+
+    workbook = load_workbook(output_path)
+
+    assert workbook.sheetnames == ["Leads"]
