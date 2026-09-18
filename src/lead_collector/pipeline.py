@@ -25,6 +25,10 @@ class PipelineResult:
     unique_results: int
     fetched: int
     failed_fetches: int
+    challenge_pages: int
+    lead_duplicates: int
+    valid_leads: int
+    invalid_leads: int
     leads: list[Lead]
 
 
@@ -79,19 +83,21 @@ class LeadCollectionPipeline:
         leads: list[Lead] = []
         fetched = 0
         failed_fetches = 0
+        challenge_pages = 0
 
         for result in unique_results:
             try:
                 fetch_result = self._website_fetcher.fetch(
                     str(result.url)
                 )
-            except WebsiteFetchError:
+            except WebsiteFetchError:   
                 failed_fetches += 1
                 continue
 
             fetched += 1
 
             if fetch_result.is_challenge_page:
+                challenge_pages += 1
                 continue
 
             page = self._html_parser.parse(
@@ -108,7 +114,21 @@ class LeadCollectionPipeline:
 
             leads.append(lead)
 
+        extracted_leads = len(leads)
+
         leads = deduplicate_leads(leads)
+
+        lead_duplicates = extracted_leads - len(leads)
+
+        valid_leads = sum(
+            lead.validation_status.value == "valid"
+            for lead in leads
+        )
+
+        invalid_leads = sum(
+            lead.validation_status.value == "invalid"
+            for lead in leads
+        )
 
         for lead in leads:
             if self._database:
@@ -136,5 +156,9 @@ class LeadCollectionPipeline:
             unique_results=len(unique_results),
             fetched=fetched,
             failed_fetches=failed_fetches,
+            challenge_pages=challenge_pages,
+            lead_duplicates=lead_duplicates,
+            valid_leads=valid_leads,
+            invalid_leads=invalid_leads,
             leads=leads,
         )
